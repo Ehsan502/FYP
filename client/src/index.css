@@ -1,0 +1,60 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+html {
+  scroll-behavior: smooth;
+  overflow-x: hidden;
+}
+
+body {
+  @apply bg-base-light dark:bg-base-dark text-ink-light dark:text-ink-dark font-body transition-colors duration-300;
+  overflow-x: hidden;
+  max-width: 100vw;
+}
+
+::selection {
+  background-color: #00C2A8;
+  color: #0B0E14;
+}
+
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: #00c2a866;
+  border-radius: 8px;
+}
+
+/* Touch friendly elements for smartphones */
+button, input, select, textarea, a {
+  touch-action: manipulation;
+}
+
+.glass {
+  @apply bg-white/70 dark:bg-surface-dark/60 backdrop-blur-xl border border-black/5 dark:border-white/10;
+}
+
+.btn-primary {
+  @apply inline-flex items-center justify-center gap-2 rounded-xl bg-primary text-base-dark font-display font-semibold px-5 py-2.5 sm:px-6 sm:py-3 shadow-glow transition-all duration-300 hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50;
+}
+
+.btn-secondary {
+  @apply inline-flex items-center justify-center gap-2 rounded-xl border border-ink-light/15 dark:border-white/15 px-5 py-2.5 sm:px-6 sm:py-3 font-display font-medium transition-all duration-300 hover:border-primary hover:text-primary active:scale-[0.98];
+}
+
+.input-field {
+  @apply w-full rounded-xl border border-ink-light/10 dark:border-white/10 bg-surface-light dark:bg-surface-dark px-3.5 py-2.5 sm:px-4 sm:py-3 text-xs sm:text-sm outline-none transition-all duration-200 focus:border-primary focus:ring-2 focus:ring-primary/20 placeholder:text-muted-light dark:placeholder:text-muted-dark;
+}
+
+.card {
+  @apply rounded-2xl border border-ink-light/5 dark:border-white/5 bg-surface-light dark:bg-surface-dark shadow-card transition-all duration-300;
+}
+
+.badge {
+  @apply inline-flex items-center rounded-full px-3 py-1 text-xs font-medium font-mono;
+}

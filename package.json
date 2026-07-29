@@ -1,0 +1,14 @@
+{
+  "name": "skillswap",
+  "private": true,
+  "version": "1.0.0",
+  "scripts": {
+    "postinstall": "cd server && npm install && cd ../client && npm install",
+    "server": "cd server && npm run dev",
+    "client": "cd client && npm run dev",
+    "dev": "concurrently -n SERVER,CLIENT -c blue,green \"npm:server\" \"npm:client\""
+  },
+  "devDependencies": {
+    "concurrently": "^8.2.2"
+  }
+}
