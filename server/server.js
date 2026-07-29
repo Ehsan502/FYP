@@ -32,11 +32,14 @@ import { createNotification } from "./utils/notify.js";
 
 dotenv.config();
 
-// DNS Override for MongoDB Atlas SRV lookup issues in Node v24
+// DNS Override for MongoDB Atlas SRV lookup issues
 dns.setServers(["1.1.1.1", "8.8.8.8"]);
 
 const app = express();
 const server = http.createServer(app);
+
+// Connect DB for Vercel / Serverless
+connectDB();
 
 const clientUrl = process.env.CLIENT_URL || "http://localhost:5173";
 
@@ -114,20 +117,12 @@ cron.schedule("*/5 * * * *", async () => {
 
 const PORT = process.env.PORT || 5000;
 
-// Start Server strictly AFTER DB Connection
-const startServer = async () => {
-  try {
-    console.log("Connecting to Database...");
-    await connectDB();
-    console.log("Database Connected Successfully! 🔥");
+// Local Development listen
+if (process.env.NODE_ENV !== "production") {
+  server.listen(PORT, () => {
+    console.log(`SkillSwap server running on port ${PORT}`);
+  });
+}
 
-    server.listen(PORT, () => {
-      console.log(`SkillSwap server running on port ${PORT}`);
-    });
-  } catch (error) {
-    console.error("Failed to connect DB / Start server ❌:", error.message);
-    process.exit(1);
-  }
-};
-
-startServer();
+// VERCEL / SERVERLESS EXPORT (Fixes the crash error)
+export default app;
