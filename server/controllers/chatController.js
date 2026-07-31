@@ -9,7 +9,6 @@ export const getOrCreateConversation = async (req, res, next) => {
     const { userId } = req.body;
     if (!userId) return res.status(400).json({ message: "userId is required" });
 
-    // Check if target user has blocked current user or vice versa
     const currentUser = await User.findById(req.user._id);
     if (currentUser.blockedUsers?.includes(userId)) {
       return res.status(403).json({ message: "You have blocked this user." });
@@ -83,7 +82,6 @@ export const sendMessage = async (req, res, next) => {
 
     const receiverId = conversation.participants.find((p) => p.toString() !== req.user._id.toString());
 
-    // Check if receiver has blocked sender
     const receiver = await User.findById(receiverId);
     if (receiver?.blockedUsers?.includes(req.user._id)) {
       return res.status(403).json({ message: "You cannot send messages to this user." });
@@ -127,7 +125,6 @@ export const sendMessage = async (req, res, next) => {
   }
 };
 
-// Harassment Protection: Block User Controller
 export const blockUser = async (req, res, next) => {
   try {
     const { targetUserId } = req.body;
@@ -143,18 +140,47 @@ export const blockUser = async (req, res, next) => {
   }
 };
 
-// Chat Delete Controller
 export const deleteConversation = async (req, res, next) => {
   try {
     const { conversationId } = req.params;
 
-    // Delete all messages in the conversation
     await Message.deleteMany({ conversation: conversationId });
-
-    // Delete the conversation document itself
     await Conversation.findByIdAndDelete(conversationId);
 
     res.json({ message: "Chat deleted successfully" });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// Smart Support Bot Controller
+export const getSupportReply = async (req, res, next) => {
+  try {
+    const { query } = req.body;
+    if (!query) {
+      return res.json({ reply: "Aap SkillSwap ke baare mein kuch bhi pooch sakte hain!" });
+    }
+
+    const q = query.toLowerCase().trim();
+    let reply = "";
+
+    if (q.includes("req") || q.includes("request") || q.includes("send") || q.includes("byjon") || q.includes("bhej")) {
+      reply = "Swap Request bhejne ke liye 'Explore' page par ja kar kisi skill card par 'Request' button click karein. Aapki sent requests 'Requests -> Outgoing' tab mein hongi!";
+    } else if (q.includes("swap") || q.includes("trade") || q.includes("skill")) {
+      reply = "SkillSwap par aap bina paise diye skills seekh sakte hain! Top bar par '+ Post a Skill' button se apni skill add karein.";
+    } else if (q.includes("chat") || q.includes("message") || q.includes("baat")) {
+      reply = "Jab koi aapki Swap Request accept kar leta hai, tab 'Chat' section unlocked ho jata hai jahan aap direct message kar sakte hain.";
+    } else if (q.includes("schedule") || q.includes("time") || q.includes("class")) {
+      reply = "Aap 'Schedule' section mein ja kar apne swap partner ke saath session ka time fix kar sakte hain.";
+    } else if (q.includes("certificate") || q.includes("cert")) {
+      reply = "Skill swap complete hone par aap 'Certificates' section se apna completion certificate download kar sakte hain.";
+    } else if (q.includes("hi") || q.includes("hello") || q.includes("hey") || q.includes("salam")) {
+      reply = "Hello! Main SkillSwap Assistant hoon. Main aapki kya madad kar sakta hoon?";
+    } else {
+      reply = "Main SkillSwap Assistant hoon. Aap Explore, Swap Requests, Chat, Schedule ya Certificates ke baare mein pooch sakte hain!";
+    }
+
+    res.json({ reply });
   } catch (error) {
     next(error);
   }
