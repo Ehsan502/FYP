@@ -14,16 +14,19 @@ export const createSwapRequest = async (req, res, next) => {
       return res.status(404).json({ message: "Skill not found" });
     }
 
-    if (skill.user.toString() === req.user._id.toString()) {
+    // Convert ObjectId to string for strict comparison
+    const skillOwnerId = skill.user._id ? skill.user._id.toString() : skill.user.toString();
+
+    if (skillOwnerId === req.user._id.toString()) {
       return res.status(400).json({ message: "You cannot request your own skill" });
     }
 
     const swap = await SwapRequest.create({
       requester: req.user._id,
-      receiver: skill.user,
+      receiver: skillOwnerId,
       skillRequested: skill._id,
-      skillOffered,
-      message,
+      skillOffered: skillOffered || "General Skill Swap",
+      message: message || "",
     });
 
     const populated = await swap.populate([
@@ -32,22 +35,27 @@ export const createSwapRequest = async (req, res, next) => {
       { path: "skillRequested", select: "title category" },
     ]);
 
-    await createNotification({
-      user: skill.user,
-      sender: req.user._id,
-      type: "swap_request",
-      text: `${req.user.name} wants to swap for "${skill.title}"`,
-      link: "/requests",
-      relatedId: swap._id,
-    });
+    // Send Notification safely
+    try {
+      await createNotification({
+        user: skillOwnerId,
+        sender: req.user._id,
+        type: "swap_request",
+        text: `${req.user.name} wants to swap for "${skill.title}"`,
+        link: "/requests",
+        relatedId: swap._id,
+      });
+    } catch (notifErr) {
+      console.error("Notification creation error (ignored):", notifErr);
+    }
 
     res.status(201).json(populated);
   } catch (error) {
+    console.error("Error creating swap request:", error);
     next(error);
   }
 };
 
-// Alias so both import names work seamlessly
 export const sendSwapRequest = createSwapRequest;
 
 // 2. Fetch User Swaps
@@ -55,6 +63,7 @@ export const getMySwaps = async (req, res, next) => {
   try {
     const userId = req.user._id;
 
+    // Fetch incoming and outgoing requests matching current logged in user
     const incoming = await SwapRequest.find({ receiver: userId })
       .populate("requester", "name email avatar")
       .populate("receiver", "name email avatar")
@@ -67,14 +76,16 @@ export const getMySwaps = async (req, res, next) => {
       .populate("skillRequested", "title")
       .sort({ createdAt: -1 });
 
-    res.json({ incoming, outgoing });
+    res.json({ 
+      incoming: incoming || [], 
+      outgoing: outgoing || [] 
+    });
   } catch (error) {
-    console.error(error);
+    console.error("Error fetching swaps:", error);
     res.status(500).json({ message: "Server error fetching swaps" });
   }
 };
 
-// Alias if route calls getUserSwaps
 export const getUserSwaps = getMySwaps;
 
 // 3. Update Swap Status (Accept / Reject / Complete / Cancel)
