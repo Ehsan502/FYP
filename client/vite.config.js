@@ -7,8 +7,9 @@ export default defineConfig({
     port: 5173,
     proxy: {
       "/api": {
-        target: "http://localhost:5000",
+        target: "https://fyp-ashen-kappa.vercel.app", // Fallback target direct to Vercel
         changeOrigin: true,
+        secure: false,
       },
     },
   },

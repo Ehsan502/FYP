@@ -1,9 +1,13 @@
 import { createContext, useContext, useEffect, useRef, useState } from "react";
 import { io } from "socket.io-client";
 import { useAuth } from "./AuthContext.jsx";
-import { API_ORIGIN } from "../config.js";
 
 const SocketContext = createContext();
+
+// Dynamic URL: Netlify par live Vercel URL uthayega, local par localhost
+const API_ORIGIN = import.meta.env.PROD 
+  ? "https://fyp-ashen-kappa.vercel.app" 
+  : "http://localhost:5000";
 
 export const SocketProvider = ({ children }) => {
   const { user } = useAuth();
@@ -23,12 +27,19 @@ export const SocketProvider = ({ children }) => {
     }
 
     const token = localStorage.getItem("skillswap_token");
+    
+    // Live Server Sync Configuration
     const socket = io(API_ORIGIN, {
       auth: { token },
       transports: ["websocket", "polling"],
+      secure: true,
     });
 
-    socket.on("connect", () => setConnected(true));
+    socket.on("connect", () => {
+      console.log("Socket Connected Successfully to:", API_ORIGIN);
+      setConnected(true);
+    });
+
     socket.on("disconnect", () => setConnected(false));
 
     socket.on("presence:update", ({ userId, isOnline }) => {

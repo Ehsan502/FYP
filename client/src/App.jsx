@@ -89,4 +89,3 @@ function App() {
 export default App;
 
 
-// 986571 (buddy)
