@@ -158,13 +158,14 @@ const Chat = () => {
   };
 
   return (
-    <div className="mx-auto max-w-6xl px-3 sm:px-6 py-6 sm:py-10">
-      <h1 className="mb-4 sm:mb-6 font-display text-2xl sm:text-3xl font-bold">Messages</h1>
+    <div className="mx-auto max-w-6xl px-2 sm:px-6 py-3 sm:py-6">
+      <h1 className="mb-3 sm:mb-6 font-display text-xl sm:text-3xl font-bold hidden sm:block">Messages</h1>
 
-      <div className="grid gap-4 md:grid-cols-[280px_1fr] lg:grid-cols-[320px_1fr]">
+      {/* Main Grid Wrapper Optimized for Mobile Height */}
+      <div className="grid gap-3 md:grid-cols-[280px_1fr] lg:grid-cols-[320px_1fr]">
         
-        {/* Conversation List (Mobile Friendly) */}
-        <div className={`card flex flex-col gap-1.5 p-2 sm:p-3 h-[calc(100vh-12rem)] md:h-[72vh] overflow-y-auto ${activeConv ? "hidden md:flex" : "flex"}`}>
+        {/* Conversation List (Mobile Fullscreen View when no Active Chat) */}
+        <div className={`card flex flex-col gap-1.5 p-2 sm:p-3 h-[calc(100dvh-6.5rem)] sm:h-[75vh] overflow-y-auto ${activeConv ? "hidden md:flex" : "flex"}`}>
           {loadingConvs ? (
             Array.from({ length: 4 }).map((_, i) => <SkeletonRow key={i} />)
           ) : conversations.length === 0 ? (
@@ -208,8 +209,8 @@ const Chat = () => {
           )}
         </div>
 
-        {/* Active Chat Area */}
-        <div className={`card flex flex-col h-[calc(100vh-12rem)] md:h-[72vh] ${!activeConv ? "hidden md:flex" : "flex"}`}>
+        {/* Active Chat Area (Mobile Viewport Optimized) */}
+        <div className={`card flex flex-col h-[calc(100dvh-6.5rem)] sm:h-[75vh] ${!activeConv ? "hidden md:flex" : "flex"}`}>
           {!activeConv ? (
             <div className="flex flex-1 items-center justify-center p-4">
               <EmptyState icon={MessageCircle} title="Select a conversation" description="Choose a chat from the list to start messaging." />
@@ -217,7 +218,7 @@ const Chat = () => {
           ) : (
             <>
               {/* Chat Header */}
-              <div className="flex items-center gap-3 border-b border-black/5 dark:border-white/5 p-3 sm:p-4">
+              <div className="flex items-center gap-3 border-b border-black/5 dark:border-white/5 p-2.5 sm:p-4">
                 <button
                   onClick={() => setActiveConv(null)}
                   className="md:hidden p-1.5 rounded-lg text-muted-light dark:text-muted-dark hover:bg-black/5 dark:hover:bg-white/5"
@@ -251,7 +252,7 @@ const Chat = () => {
                         animate={{ opacity: 1, y: 0 }}
                         className={`flex ${mine ? "justify-end" : "justify-start"}`}
                       >
-                        <div className={`max-w-[85%] sm:max-w-[75%] rounded-2xl px-3.5 py-2 sm:px-4 sm:py-2.5 text-xs sm:text-sm ${mine ? "bg-primary text-base-dark" : "bg-black/5 dark:bg-white/5"}`}>
+                        <div className={`max-w-[85%] sm:max-w-[75%] rounded-2xl px-3 py-2 sm:px-4 sm:py-2.5 text-xs sm:text-sm ${mine ? "bg-primary text-base-dark" : "bg-black/5 dark:bg-white/5"}`}>
                           {msg.text && <p className="whitespace-pre-wrap break-words">{msg.text}</p>}
                           {msg.fileUrl && (
                             msg.fileType?.startsWith("image") ? (
@@ -276,7 +277,7 @@ const Chat = () => {
               </div>
 
               {/* Chat Input */}
-              <form onSubmit={sendMessage} className="flex items-center gap-2 border-t border-black/5 dark:border-white/5 p-2.5 sm:p-4">
+              <form onSubmit={sendMessage} className="flex items-center gap-2 border-t border-black/5 dark:border-white/5 p-2 sm:p-3">
                 <button type="button" onClick={() => fileInputRef.current?.click()} className="p-1.5 text-muted-light dark:text-muted-dark hover:text-primary">
                   <Paperclip size={18} />
                 </button>
@@ -285,9 +286,9 @@ const Chat = () => {
                   value={text}
                   onChange={(e) => handleTyping(e.target.value)}
                   placeholder="Type a message..."
-                  className="input-field flex-1"
+                  className="input-field flex-1 text-xs sm:text-sm !py-2"
                 />
-                <button type="submit" disabled={sending || !text.trim()} className="btn-primary !p-2.5 sm:!px-4">
+                <button type="submit" disabled={sending || !text.trim()} className="btn-primary !p-2 sm:!px-4">
                   <Send size={16} />
                 </button>
               </form>

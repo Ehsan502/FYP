@@ -4,7 +4,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { 
   Menu, X, LogOut, LayoutDashboard, Compass, 
   User as UserIcon, MessageSquare, Trophy, ShieldCheck, 
-  CalendarClock, Award, Settings 
+  CalendarClock, Award 
 } from "lucide-react";
 import ThemeToggle from "./ThemeToggle.jsx";
 import NotificationBell from "./NotificationBell.jsx";
@@ -28,7 +28,7 @@ const Navbar = () => {
     }`;
 
   const mobileLinkClass = ({ isActive }) =>
-    `flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-colors ${
+    `flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-sm font-medium transition-colors ${
       isActive 
         ? "bg-primary/10 text-primary font-semibold border border-primary/20" 
         : "text-ink-light/80 dark:text-ink-dark/80 hover:bg-black/5 dark:hover:bg-white/5 hover:text-primary"
@@ -36,7 +36,7 @@ const Navbar = () => {
 
   return (
     <header className="sticky top-0 z-50 glass">
-      <nav className="mx-auto flex max-w-7xl items-center justify-between px-6 py-4">
+      <nav className="mx-auto flex max-w-7xl items-center justify-between px-4 sm:px-6 py-3.5">
         {/* Brand Logo */}
         <Link to="/" className="flex items-center gap-2 font-display text-lg font-bold">
           <Logo />
@@ -80,8 +80,8 @@ const Navbar = () => {
           )}
         </div>
 
-        {/* Actions & Hamburger Toggle */}
-        <div className="flex items-center gap-3">
+        {/* Right Actions & Hamburger Icon */}
+        <div className="flex items-center gap-2.5">
           <ThemeToggle />
           {user && <NotificationBell />}
           
@@ -95,34 +95,39 @@ const Navbar = () => {
             </Link>
           )}
 
-          {/* Mobile Menu Button */}
-          <button className="xl:hidden text-ink-light dark:text-ink-dark p-1" onClick={() => setOpen(!open)} aria-label="Menu">
-            {open ? <X size={24} /> : <Menu size={24} />}
+          {/* 3 Lines Hamburger Menu Button */}
+          <button 
+            className="xl:hidden p-2 rounded-xl text-ink-light dark:text-ink-dark hover:bg-black/5 dark:hover:bg-white/5 transition-colors" 
+            onClick={() => setOpen(!open)} 
+            aria-label="Toggle Menu"
+          >
+            {open ? <X size={22} /> : <Menu size={22} />}
           </button>
         </div>
       </nav>
 
-      {/* Mobile Menu Drawer */}
+      {/* Mobile Drawer (Inside 3 Lines) */}
       <AnimatePresence>
         {open && (
           <motion.div
             initial={{ height: 0, opacity: 0 }}
             animate={{ height: "auto", opacity: 1 }}
             exit={{ height: 0, opacity: 0 }}
+            transition={{ duration: 0.2 }}
             className="overflow-hidden border-t border-black/5 dark:border-white/5 xl:hidden bg-background/95 backdrop-blur-lg"
           >
-            <div className="flex flex-col gap-2 px-6 py-5">
+            <div className="flex flex-col gap-1.5 px-4 py-4">
               
-              {/* Logged In User Mobile Header Card */}
+              {/* User Profile Mini Header */}
               {user && (
                 <div className="flex items-center justify-between p-3 rounded-2xl bg-black/5 dark:bg-white/5 border border-black/10 dark:border-white/10 mb-2">
                   <div className="flex items-center gap-2.5">
                     <div className="p-2 rounded-xl bg-primary/20 text-primary">
                       <UserIcon size={18} />
                     </div>
-                    <div>
-                      <p className="text-sm font-bold text-ink-light dark:text-ink-dark leading-tight">{user.name}</p>
-                      <p className="text-[11px] text-ink-light/60 dark:text-ink-dark/60">{user.email}</p>
+                    <div className="min-w-0">
+                      <p className="text-sm font-bold text-ink-light dark:text-ink-dark truncate leading-tight">{user.name}</p>
+                      <p className="text-[11px] text-ink-light/60 dark:text-ink-dark/60 truncate">{user.email}</p>
                     </div>
                   </div>
                   {user.role === "admin" && (
@@ -165,7 +170,7 @@ const Navbar = () => {
                   </NavLink>
 
                   <NavLink to="/profile" onClick={() => setOpen(false)} className={mobileLinkClass}>
-                    <Settings size={18} className="text-primary" /> Profile & Settings
+                    <UserIcon size={18} className="text-primary" /> Profile & Settings
                   </NavLink>
 
                   {user.role === "admin" && (
@@ -176,14 +181,14 @@ const Navbar = () => {
                 </>
               )}
 
-              {/* Action Buttons Mobile */}
+              {/* Action Logout / Login Button */}
               <div className="pt-3 mt-2 border-t border-black/5 dark:border-white/5">
                 {user ? (
-                  <button onClick={handleLogout} className="btn-secondary w-full flex items-center justify-center gap-2">
+                  <button onClick={handleLogout} className="btn-secondary w-full flex items-center justify-center gap-2 !py-2.5">
                     <LogOut size={16} /> Logout
                   </button>
                 ) : (
-                  <Link to="/login" onClick={() => setOpen(false)} className="btn-primary w-full text-center">
+                  <Link to="/login" onClick={() => setOpen(false)} className="btn-primary w-full text-center block !py-2.5">
                     Sign In
                   </Link>
                 )}
