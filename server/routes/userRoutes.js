@@ -1,40 +1,28 @@
 import express from "express";
 import {
-  getUserProfile,
-  updateUserProfile,
-  getDashboardStats,
-  getLeaderboard,
-  deleteUserProfile,
-} from "../controllers/userController.js";
+  getAllUsersForChat,
+  getOrCreateConversation,
+  getMyConversations,
+  getMessages,
+  sendMessage,
+  blockUser,
+  deleteConversation,
+  getSupportReply,
+} from "../controllers/chatController.js";
 import { protect } from "../middleware/authMiddleware.js";
-import User from "../models/User.js"; // Imported User model for 2FA toggle
+import upload from "../middleware/uploadMiddleware.js";
 
 const router = express.Router();
 
-router.get("/leaderboard", getLeaderboard);
-router.get("/dashboard", protect, getDashboardStats);
-router.get("/profile/:id", getUserProfile);
-router.put("/profile", protect, updateUserProfile);
-router.delete("/profile", protect, deleteUserProfile);
+// FIXED: Is line ko sab se ooper include karein
+router.get("/users", protect, getAllUsersForChat);
 
-// FIXED: 2FA Toggle Route Add kar diya hai
-router.put("/toggle-2fa", protect, async (req, res, next) => {
-  try {
-    const user = await User.findById(req.user._id);
-    if (!user) {
-      return res.status(404).json({ message: "User not found" });
-    }
-
-    user.twoFactorEnabled = req.body.enabled;
-    await user.save();
-
-    res.json({
-      message: `2FA ${user.twoFactorEnabled ? "enabled" : "disabled"} successfully`,
-      twoFactorEnabled: user.twoFactorEnabled,
-    });
-  } catch (error) {
-    next(error);
-  }
-});
+router.get("/conversations", protect, getMyConversations);
+router.post("/conversations", protect, getOrCreateConversation);
+router.get("/messages/:conversationId", protect, getMessages);
+router.post("/messages", protect, upload.single("file"), sendMessage);
+router.post("/block", protect, blockUser);
+router.delete("/conversations/:conversationId", protect, deleteConversation);
+router.post("/support", getSupportReply);
 
 export default router;

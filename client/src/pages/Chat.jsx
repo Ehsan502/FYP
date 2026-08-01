@@ -15,7 +15,7 @@ const Chat = () => {
   const { socket, isOnline } = useSocket();
   const [searchParams] = useSearchParams();
   const [conversations, setConversations] = useState([]);
-  const [allUsers, setAllUsers] = useState([]); // Registered users
+  const [allUsers, setAllUsers] = useState([]);
   const [activeConv, setActiveConv] = useState(null);
   const [messages, setMessages] = useState([]);
   const [text, setText] = useState("");
@@ -27,28 +27,37 @@ const Chat = () => {
   const bottomRef = useRef(null);
   const typingTimeout = useRef(null);
 
+  // SAFE DATA LOADING METHOD
   const loadInitialData = async () => {
     setLoadingConvs(true);
+    let convsData = [];
+
+    // 1. Fetch Conversations Safely
     try {
-      const [convRes, usersRes] = await Promise.all([
-        api.get("/chat/conversations"),
-        api.get("/chat/users").catch(() => api.get("/users")), // Fallback if route exists in /users
-      ]);
-
-      setConversations(convRes.data);
-      setAllUsers(usersRes.data || []);
-
-      const targetUserId = searchParams.get("user");
-      if (targetUserId) {
-        startChatWithUser(targetUserId);
-      } else if (convRes.data.length > 0 && !activeConv && window.innerWidth >= 768) {
-        setActiveConv(convRes.data[0]);
-      }
+      const convRes = await api.get("/chat/conversations");
+      convsData = convRes.data || [];
+      setConversations(convsData);
     } catch (err) {
-      toast.error("Could not load chats or users");
-    } finally {
-      setLoadingConvs(false);
+      console.error("Conversations error:", err);
     }
+
+    // 2. Fetch Users List Safely with Fallback
+    try {
+      const usersRes = await api.get("/chat/users").catch(() => api.get("/users/leaderboard"));
+      setAllUsers(usersRes.data || []);
+    } catch (err) {
+      console.error("Users list fetch error:", err);
+    }
+
+    // 3. Handle Active Selection
+    const targetUserId = searchParams.get("user");
+    if (targetUserId) {
+      startChatWithUser(targetUserId);
+    } else if (convsData.length > 0 && !activeConv && window.innerWidth >= 768) {
+      setActiveConv(convsData[0]);
+    }
+
+    setLoadingConvs(false);
   };
 
   useEffect(() => {
@@ -175,9 +184,8 @@ const Chat = () => {
     }
   };
 
-  // Combine Active Conversations with unregistered users list
   const activeUserIds = conversations.map((c) => otherUser(c)?._id);
-  const otherPlatformUsers = allUsers.filter((u) => !activeUserIds.includes(u._id));
+  const otherPlatformUsers = allUsers.filter((u) => u._id !== user._id && !activeUserIds.includes(u._id));
 
   return (
     <div className="mx-auto max-w-6xl px-2 sm:px-6 py-3 sm:py-6">
@@ -185,13 +193,13 @@ const Chat = () => {
 
       <div className="grid gap-3 md:grid-cols-[280px_1fr] lg:grid-cols-[320px_1fr]">
         
-        {/* Conversation & All Users List */}
+        {/* Conversation & Users List */}
         <div className={`card flex flex-col gap-1.5 p-2 sm:p-3 h-[calc(100dvh-6.5rem)] sm:h-[75vh] overflow-y-auto ${activeConv ? "hidden md:flex" : "flex"}`}>
           {loadingConvs ? (
             Array.from({ length: 4 }).map((_, i) => <SkeletonRow key={i} />)
           ) : (
             <>
-              {/* Existing Active Conversations */}
+              {/* Conversations */}
               {conversations.map((conv) => {
                 const partner = otherUser(conv);
                 const active = activeConv?._id === conv._id;
@@ -226,7 +234,7 @@ const Chat = () => {
                 );
               })}
 
-              {/* All Registered Users Header */}
+              {/* Other Platform Users */}
               {otherPlatformUsers.length > 0 && (
                 <div className="mt-4 mb-1 px-3">
                   <p className="text-[11px] font-bold tracking-wider uppercase text-muted-light dark:text-muted-dark">
@@ -235,7 +243,6 @@ const Chat = () => {
                 </div>
               )}
 
-              {/* Render non-contact users */}
               {otherPlatformUsers.map((u) => (
                 <button
                   key={u._id}
@@ -260,7 +267,7 @@ const Chat = () => {
           )}
         </div>
 
-        {/* Active Chat Area */}
+        {/* Chat Feed */}
         <div className={`card flex flex-col h-[calc(100dvh-6.5rem)] sm:h-[75vh] ${!activeConv ? "hidden md:flex" : "flex"}`}>
           {!activeConv ? (
             <div className="flex flex-1 items-center justify-center p-4">
@@ -268,7 +275,6 @@ const Chat = () => {
             </div>
           ) : (
             <>
-              {/* Chat Header */}
               <div className="flex items-center gap-3 border-b border-black/5 dark:border-white/5 p-2.5 sm:p-4">
                 <button
                   onClick={() => setActiveConv(null)}
@@ -287,7 +293,6 @@ const Chat = () => {
                 </div>
               </div>
 
-              {/* Messages Feed */}
               <div className="flex-1 space-y-3 overflow-y-auto p-3 sm:p-4">
                 {loadingMsgs ? (
                   <p className="text-center text-xs sm:text-sm text-muted-light dark:text-muted-dark">Loading messages...</p>
@@ -327,7 +332,6 @@ const Chat = () => {
                 <div ref={bottomRef} />
               </div>
 
-              {/* Chat Input */}
               <form onSubmit={sendMessage} className="flex items-center gap-2 border-t border-black/5 dark:border-white/5 p-2 sm:p-3">
                 <button type="button" onClick={() => fileInputRef.current?.click()} className="p-1.5 text-muted-light dark:text-muted-dark hover:text-primary">
                   <Paperclip size={18} />
