@@ -15,6 +15,7 @@ const Chat = () => {
   const { socket, isOnline } = useSocket();
   const [searchParams] = useSearchParams();
   const [conversations, setConversations] = useState([]);
+  const [allUsers, setAllUsers] = useState([]); // Registered users
   const [activeConv, setActiveConv] = useState(null);
   const [messages, setMessages] = useState([]);
   const [text, setText] = useState("");
@@ -26,31 +27,48 @@ const Chat = () => {
   const bottomRef = useRef(null);
   const typingTimeout = useRef(null);
 
-  const loadConversations = async () => {
+  const loadInitialData = async () => {
     setLoadingConvs(true);
     try {
-      const res = await api.get("/chat/conversations");
-      setConversations(res.data);
+      const [convRes, usersRes] = await Promise.all([
+        api.get("/chat/conversations"),
+        api.get("/chat/users").catch(() => api.get("/users")), // Fallback if route exists in /users
+      ]);
+
+      setConversations(convRes.data);
+      setAllUsers(usersRes.data || []);
+
       const targetUserId = searchParams.get("user");
       if (targetUserId) {
-        const convRes = await api.post("/chat/conversations", { userId: targetUserId });
-        setActiveConv(convRes.data);
-        if (!res.data.find((c) => c._id === convRes.data._id)) {
-          setConversations((prev) => [convRes.data, ...prev]);
-        }
-      } else if (res.data.length > 0 && !activeConv && window.innerWidth >= 768) {
-        setActiveConv(res.data[0]);
+        startChatWithUser(targetUserId);
+      } else if (convRes.data.length > 0 && !activeConv && window.innerWidth >= 768) {
+        setActiveConv(convRes.data[0]);
       }
     } catch (err) {
-      toast.error("Could not load conversations");
+      toast.error("Could not load chats or users");
     } finally {
       setLoadingConvs(false);
     }
   };
 
   useEffect(() => {
-    loadConversations();
+    loadInitialData();
   }, []);
+
+  const startChatWithUser = async (targetUserId) => {
+    try {
+      const convRes = await api.post("/chat/conversations", { userId: targetUserId });
+      setActiveConv(convRes.data);
+      setConversations((prev) => {
+        if (!prev.find((c) => c._id === convRes.data._id)) {
+          return [convRes.data, ...prev];
+        }
+        return prev;
+      });
+    } catch (err) {
+      toast.error("Failed to start conversation");
+    }
+  };
 
   const otherUser = (conv) => conv?.participants?.find((p) => p._id !== user._id);
 
@@ -157,63 +175,96 @@ const Chat = () => {
     }
   };
 
+  // Combine Active Conversations with unregistered users list
+  const activeUserIds = conversations.map((c) => otherUser(c)?._id);
+  const otherPlatformUsers = allUsers.filter((u) => !activeUserIds.includes(u._id));
+
   return (
     <div className="mx-auto max-w-6xl px-2 sm:px-6 py-3 sm:py-6">
       <h1 className="mb-3 sm:mb-6 font-display text-xl sm:text-3xl font-bold hidden sm:block">Messages</h1>
 
-      {/* Main Grid Wrapper Optimized for Mobile Height */}
       <div className="grid gap-3 md:grid-cols-[280px_1fr] lg:grid-cols-[320px_1fr]">
         
-        {/* Conversation List (Mobile Fullscreen View when no Active Chat) */}
+        {/* Conversation & All Users List */}
         <div className={`card flex flex-col gap-1.5 p-2 sm:p-3 h-[calc(100dvh-6.5rem)] sm:h-[75vh] overflow-y-auto ${activeConv ? "hidden md:flex" : "flex"}`}>
           {loadingConvs ? (
             Array.from({ length: 4 }).map((_, i) => <SkeletonRow key={i} />)
-          ) : conversations.length === 0 ? (
-            <p className="px-3 py-8 text-center text-xs sm:text-sm text-muted-light dark:text-muted-dark">
-              No conversations yet. Start one from Explore.
-            </p>
           ) : (
-            conversations.map((conv) => {
-              const partner = otherUser(conv);
-              const active = activeConv?._id === conv._id;
-              return (
+            <>
+              {/* Existing Active Conversations */}
+              {conversations.map((conv) => {
+                const partner = otherUser(conv);
+                const active = activeConv?._id === conv._id;
+                return (
+                  <button
+                    key={conv._id}
+                    onClick={() => setActiveConv(conv)}
+                    className={`flex items-center gap-3 rounded-xl p-2.5 sm:p-3 text-left transition-colors ${
+                      active ? "bg-primary/10" : "hover:bg-black/5 dark:hover:bg-white/5"
+                    }`}
+                  >
+                    <div className="relative flex-shrink-0">
+                      <div className="flex h-10 w-10 sm:h-11 sm:w-11 items-center justify-center rounded-full bg-primary/10 font-display font-bold text-primary text-sm sm:text-base">
+                        {partner?.name?.charAt(0)?.toUpperCase() || "U"}
+                      </div>
+                      {isOnline(partner?._id) && (
+                        <span className="absolute bottom-0 right-0 h-3 w-3 rounded-full border-2 border-surface-light dark:border-surface-dark bg-primary" />
+                      )}
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center justify-between">
+                        <p className="truncate text-xs sm:text-sm font-semibold">{partner?.name}</p>
+                        {conv.unreadCount > 0 && (
+                          <span className="flex h-4 min-w-[16px] items-center justify-center rounded-full bg-primary px-1 text-[10px] font-bold text-base-dark">
+                            {conv.unreadCount}
+                          </span>
+                        )}
+                      </div>
+                      <p className="truncate text-[11px] sm:text-xs text-muted-light dark:text-muted-dark">{conv.lastMessage || "Say hello 👋"}</p>
+                    </div>
+                  </button>
+                );
+              })}
+
+              {/* All Registered Users Header */}
+              {otherPlatformUsers.length > 0 && (
+                <div className="mt-4 mb-1 px-3">
+                  <p className="text-[11px] font-bold tracking-wider uppercase text-muted-light dark:text-muted-dark">
+                    All Platform Users ({otherPlatformUsers.length})
+                  </p>
+                </div>
+              )}
+
+              {/* Render non-contact users */}
+              {otherPlatformUsers.map((u) => (
                 <button
-                  key={conv._id}
-                  onClick={() => setActiveConv(conv)}
-                  className={`flex items-center gap-3 rounded-xl p-2.5 sm:p-3 text-left transition-colors ${
-                    active ? "bg-primary/10" : "hover:bg-black/5 dark:hover:bg-white/5"
-                  }`}
+                  key={u._id}
+                  onClick={() => startChatWithUser(u._id)}
+                  className="flex items-center gap-3 rounded-xl p-2.5 sm:p-3 text-left transition-colors hover:bg-black/5 dark:hover:bg-white/5 opacity-80 hover:opacity-100"
                 >
                   <div className="relative flex-shrink-0">
-                    <div className="flex h-10 w-10 sm:h-11 sm:w-11 items-center justify-center rounded-full bg-primary/10 font-display font-bold text-primary text-sm sm:text-base">
-                      {partner?.name?.charAt(0)?.toUpperCase() || "U"}
+                    <div className="flex h-9 w-9 items-center justify-center rounded-full bg-secondary/20 font-display font-bold text-secondary text-xs sm:text-sm">
+                      {u.name?.charAt(0)?.toUpperCase() || "U"}
                     </div>
-                    {isOnline(partner?._id) && (
-                      <span className="absolute bottom-0 right-0 h-3 w-3 rounded-full border-2 border-surface-light dark:border-surface-dark bg-primary" />
+                    {isOnline(u._id) && (
+                      <span className="absolute bottom-0 right-0 h-2.5 w-2.5 rounded-full border-2 border-surface-light dark:border-surface-dark bg-primary" />
                     )}
                   </div>
                   <div className="min-w-0 flex-1">
-                    <div className="flex items-center justify-between">
-                      <p className="truncate text-xs sm:text-sm font-semibold">{partner?.name}</p>
-                      {conv.unreadCount > 0 && (
-                        <span className="flex h-4 min-w-[16px] items-center justify-center rounded-full bg-primary px-1 text-[10px] font-bold text-base-dark">
-                          {conv.unreadCount}
-                        </span>
-                      )}
-                    </div>
-                    <p className="truncate text-[11px] sm:text-xs text-muted-light dark:text-muted-dark">{conv.lastMessage || "Say hello 👋"}</p>
+                    <p className="truncate text-xs sm:text-sm font-medium">{u.name}</p>
+                    <p className="truncate text-[10px] text-muted-light dark:text-muted-dark">Click to start chatting</p>
                   </div>
                 </button>
-              );
-            })
+              ))}
+            </>
           )}
         </div>
 
-        {/* Active Chat Area (Mobile Viewport Optimized) */}
+        {/* Active Chat Area */}
         <div className={`card flex flex-col h-[calc(100dvh-6.5rem)] sm:h-[75vh] ${!activeConv ? "hidden md:flex" : "flex"}`}>
           {!activeConv ? (
             <div className="flex flex-1 items-center justify-center p-4">
-              <EmptyState icon={MessageCircle} title="Select a conversation" description="Choose a chat from the list to start messaging." />
+              <EmptyState icon={MessageCircle} title="Select a conversation" description="Choose a user from the list to start messaging." />
             </div>
           ) : (
             <>

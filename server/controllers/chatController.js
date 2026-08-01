@@ -4,6 +4,19 @@ import User from "../models/User.js";
 import { emitToUser } from "../socket/index.js";
 import { uploadBufferToCloudinary } from "../utils/cloudinaryUpload.js";
 
+// FIXED: Sabhi Registered Users fetch karne ka API controller
+export const getAllUsersForChat = async (req, res, next) => {
+  try {
+    // Current user ke alawa baaki sab users return hongay
+    const users = await User.find({ _id: { $ne: req.user._id } })
+      .select("name avatar isOnline lastSeen email")
+      .lean();
+    res.json(users);
+  } catch (error) {
+    next(error);
+  }
+};
+
 export const getOrCreateConversation = async (req, res, next) => {
   try {
     const { userId } = req.body;
@@ -153,7 +166,6 @@ export const deleteConversation = async (req, res, next) => {
   }
 };
 
-// Smart Support Bot Controller
 export const getSupportReply = async (req, res, next) => {
   try {
     const { query } = req.body;
