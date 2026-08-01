@@ -15,7 +15,6 @@ const Login = () => {
 
   const handleChange = (e) => setForm({ ...form, [e.target.name]: e.target.value });
 
-  // Simple Clean Login Submission
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
@@ -61,7 +60,7 @@ const Login = () => {
               placeholder="Email address"
               value={form.email}
               onChange={handleChange}
-              className="input-field pl-11"
+              className="input-field pl-11 text-slate-900 dark:text-white"
             />
           </div>
 
@@ -74,7 +73,7 @@ const Login = () => {
               placeholder="Password"
               value={form.password}
               onChange={handleChange}
-              className="input-field pl-11"
+              className="input-field pl-11 text-slate-900 dark:text-white"
             />
           </div>
 
@@ -87,7 +86,7 @@ const Login = () => {
           <button
             type="submit"
             disabled={loading}
-            className="btn-primary mt-2 w-full flex items-center justify-center gap-2"
+            className="btn-primary mt-2 w-full flex items-center justify-center gap-2 cursor-pointer"
           >
             {loading ? "Signing in..." : "Sign In"} <ArrowRight size={17} />
           </button>

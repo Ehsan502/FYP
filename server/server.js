@@ -35,34 +35,20 @@ try {
 
 const app = express();
 
-// Allowed Origins
-const allowedOrigins = [
-  "https://fypapp.netlify.app",
-  "http://localhost:5173",
-  "http://localhost:3000",
-];
-
-if (process.env.CLIENT_URL) {
-  const cleanEnvUrl = process.env.CLIENT_URL.replace(/\[.*\]\(|\)/g, "").trim();
-  if (cleanEnvUrl && !allowedOrigins.includes(cleanEnvUrl)) {
-    allowedOrigins.push(cleanEnvUrl);
+// Solid CORS configuration to fix Netlify -> Vercel Requests
+app.use((req, res, next) => {
+  res.header("Access-Control-Allow-Origin", "*");
+  res.header("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, PATCH, OPTIONS");
+  res.header("Access-Control-Allow-Headers", "Origin, X-Requested-With, Content-Type, Accept, Authorization");
+  
+  // Handle preflight OPTIONS request
+  if (req.method === "OPTIONS") {
+    return res.status(200).end();
   }
-}
+  next();
+});
 
-const corsOptions = {
-  origin: function (origin, callback) {
-    if (!origin || allowedOrigins.some((allowed) => origin.startsWith(allowed))) {
-      return callback(null, true);
-    }
-    return callback(null, true);
-  },
-  credentials: true,
-  methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
-  allowedHeaders: ["Content-Type", "Authorization", "X-Requested-With"],
-};
-
-app.use(cors(corsOptions));
-app.options("*", cors(corsOptions));
+app.use(cors({ origin: true, credentials: true }));
 
 // Database Connection Middleware
 app.use(async (req, res, next) => {

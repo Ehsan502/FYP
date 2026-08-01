@@ -35,7 +35,7 @@ export const registerUser = async (req, res, next) => {
 
 export const loginUser = async (req, res, next) => {
   try {
-    const { email, password, captchaAnswer, expectedAnswer } = req.body;
+    const { email, password } = req.body;
 
     if (!email || !password) {
       return res.status(400).json({ message: "Please provide email and password" });
@@ -51,25 +51,7 @@ export const loginUser = async (req, res, next) => {
       return res.status(403).json({ message: "Your account has been blocked. Contact support." });
     }
 
-    // Step 1: Challenge return karein agar captcha answer nahi mila
-    if (captchaAnswer === undefined || captchaAnswer === null || captchaAnswer === "") {
-      const num1 = Math.floor(Math.random() * 9) + 1;
-      const num2 = Math.floor(Math.random() * 9) + 1;
-
-      return res.status(200).json({
-        requires2FA: true,
-        question: `What is ${num1} + ${num2}?`,
-        expectedAnswer: num1 + num2,
-        message: "Complete the security challenge to login",
-      });
-    }
-
-    // Step 2: Answer Verification
-    if (parseInt(captchaAnswer, 10) !== parseInt(expectedAnswer, 10)) {
-      return res.status(400).json({ message: "Incorrect 2FA Security Challenge answer!" });
-    }
-
-    // Step 3: Success Login
+    // Direct Success Login (No 2FA)
     res.json({
       user: { ...user.toSafeObject(), level: getLevelForPoints(user.points) },
       token: generateToken(user._id),

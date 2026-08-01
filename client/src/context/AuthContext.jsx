@@ -22,7 +22,6 @@ export const AuthProvider = ({ children }) => {
       .finally(() => setLoading(false));
   }, []);
 
-  // Updated Login Function to accept response payload object
   const login = (authData) => {
     if (authData?.token) {
       localStorage.setItem("skillswap_token", authData.token);
