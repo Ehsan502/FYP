@@ -35,7 +35,7 @@ try {
 
 const app = express();
 
-// 1. CORS Configuration (Properly Handling Preflight Requests)
+// Allowed Origins
 const allowedOrigins = [
   "https://fypapp.netlify.app",
   "http://localhost:5173",
@@ -54,7 +54,7 @@ const corsOptions = {
     if (!origin || allowedOrigins.some((allowed) => origin.startsWith(allowed))) {
       return callback(null, true);
     }
-    return callback(null, true); // Fallback to allow requests
+    return callback(null, true);
   },
   credentials: true,
   methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
@@ -62,9 +62,9 @@ const corsOptions = {
 };
 
 app.use(cors(corsOptions));
-app.options("*", cors(corsOptions)); // Enable preflight for ALL routes
+app.options("*", cors(corsOptions));
 
-// 2. Middleware to ensure DB is connected
+// Database Connection Middleware
 app.use(async (req, res, next) => {
   try {
     await connectDB();
