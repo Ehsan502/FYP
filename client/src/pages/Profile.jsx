@@ -1,7 +1,11 @@
 import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
-import { Save, Star, Repeat2, Zap, Github, Linkedin, Link as LinkIcon } from "lucide-react";
+import { 
+  Save, Star, Repeat2, Zap, Github, Linkedin, 
+  Link as LinkIcon, KeyRound, ShieldAlert, Trash2 
+} from "lucide-react";
 import toast from "react-hot-toast";
+import { useNavigate } from "react-router-dom";
 import api from "../api/axios.js";
 import { useAuth } from "../context/AuthContext.jsx";
 import AvatarUpload from "../components/AvatarUpload.jsx";
@@ -11,7 +15,10 @@ import StarRating from "../components/StarRating.jsx";
 const EXPERIENCE_LEVELS = ["", "Beginner", "Intermediate", "Advanced", "Expert"];
 
 const Profile = () => {
-  const { user, updateUser } = useAuth();
+  const { user, updateUser, logout } = useAuth();
+  const navigate = useNavigate();
+
+  // Profile Form State
   const [form, setForm] = useState({
     name: user?.name || "",
     bio: user?.bio || "",
@@ -25,8 +32,20 @@ const Profile = () => {
     portfolioLinks: user?.portfolioLinks?.join(", ") || "",
     languages: user?.languages?.join(", ") || "",
   });
+
   const [loading, setLoading] = useState(false);
   const [reviews, setReviews] = useState([]);
+
+  // Change Password States
+  const [currentPassword, setCurrentPassword] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [changingPassword, setChangingPassword] = useState(false);
+
+  // Delete Account States
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [deletePassword, setDeletePassword] = useState("");
+  const [deleting, setDeleting] = useState(false);
 
   useEffect(() => {
     if (user?._id) {
@@ -36,6 +55,7 @@ const Profile = () => {
 
   const handleChange = (e) => setForm({ ...form, [e.target.name]: e.target.value });
 
+  // 1. Submit Profile Update
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
@@ -63,9 +83,61 @@ const Profile = () => {
     }
   };
 
+  // 2. Change Password
+  const handleChangePassword = async (e) => {
+    e.preventDefault();
+    if (newPassword.length < 6) {
+      return toast.error("New password must be at least 6 characters long");
+    }
+    if (newPassword !== confirmPassword) {
+      return toast.error("New passwords do not match!");
+    }
+
+    setChangingPassword(true);
+    try {
+      await api.put("/users/change-password", {
+        currentPassword,
+        newPassword,
+      });
+      toast.success("Password changed successfully!");
+      setCurrentPassword("");
+      setNewPassword("");
+      setConfirmPassword("");
+    } catch (err) {
+      toast.error(err.response?.data?.message || "Could not change password");
+    } finally {
+      setChangingPassword(false);
+    }
+  };
+
+  // 3. Delete Account
+  const handleDeleteAccount = async () => {
+    if (!deletePassword) {
+      return toast.error("Please enter your password to confirm deletion");
+    }
+
+    setDeleting(true);
+    try {
+      await api.delete("/users/account", {
+        data: { password: deletePassword },
+      });
+      toast.success("Account deleted successfully");
+      logout();
+      navigate("/");
+    } catch (err) {
+      toast.error(err.response?.data?.message || "Failed to delete account");
+    } finally {
+      setDeleting(false);
+    }
+  };
+
   return (
-    <div className="mx-auto max-w-3xl px-6 py-14">
-      <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} className="card p-8">
+    <div className="mx-auto max-w-3xl px-4 sm:px-6 py-8 sm:py-12 space-y-8">
+      
+      {/* Main Profile Info Card */}
+      <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} className="card p-6 sm:p-8">
+        
+        {/* Header User Details */}
         <div className="mb-4 flex flex-col items-center gap-4 text-center sm:flex-row sm:text-left">
           <AvatarUpload user={user} onUploaded={updateUser} />
           <div className="flex-1">
@@ -79,6 +151,7 @@ const Profile = () => {
           </div>
         </div>
 
+        {/* Profile Completion Bar */}
         <div className="mb-6">
           <div className="mb-1.5 flex items-center justify-between text-xs text-muted-light dark:text-muted-dark">
             <span>Profile completion</span>
@@ -94,12 +167,14 @@ const Profile = () => {
           </div>
         </div>
 
+        {/* Badges */}
         {user?.badges?.length > 0 && (
           <div className="mb-6 flex flex-wrap gap-2">
             {user.badges.map((b) => <BadgeChip key={b} badgeKey={b} />)}
           </div>
         )}
 
+        {/* Profile Edit Form */}
         <form onSubmit={handleSubmit} className="flex flex-col gap-4">
           <div className="grid gap-4 sm:grid-cols-2">
             <input name="name" placeholder="Full name" value={form.name} onChange={handleChange} className="input-field" />
@@ -141,6 +216,123 @@ const Profile = () => {
         </form>
       </motion.div>
 
+      {/* --- Change Password Section --- */}
+      <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }} className="card p-6 sm:p-8">
+        <div className="flex items-center gap-2.5 mb-6 pb-4 border-b border-black/5 dark:border-white/5">
+          <KeyRound className="text-primary" size={20} />
+          <h2 className="text-lg font-bold">Change Password</h2>
+        </div>
+
+        <form onSubmit={handleChangePassword} className="flex flex-col gap-4">
+          <input
+            type="password"
+            placeholder="Current Password"
+            value={currentPassword}
+            onChange={(e) => setCurrentPassword(e.target.value)}
+            className="input-field"
+            required
+          />
+
+          <div className="grid gap-4 sm:grid-cols-2">
+            <input
+              type="password"
+              placeholder="New Password"
+              value={newPassword}
+              onChange={(e) => setNewPassword(e.target.value)}
+              className="input-field"
+              required
+            />
+            <input
+              type="password"
+              placeholder="Confirm New Password"
+              value={confirmPassword}
+              onChange={(e) => setConfirmPassword(e.target.value)}
+              className="input-field"
+              required
+            />
+          </div>
+
+          <button type="submit" disabled={changingPassword} className="btn-primary mt-2 w-full sm:w-fit">
+            <KeyRound size={16} /> {changingPassword ? "Updating..." : "Update Password"}
+          </button>
+        </form>
+      </motion.div>
+
+      {/* --- Danger Zone / Delete Account Section --- */}
+      <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }} className="card p-6 sm:p-8 border-red-500/20 bg-red-500/5">
+        <div className="flex items-center justify-between pb-4 border-b border-red-500/10">
+          <div className="flex items-center gap-2.5">
+            <ShieldAlert className="text-red-500" size={20} />
+            <div>
+              <h2 className="text-lg font-bold text-red-500">Danger Zone</h2>
+              <p className="text-xs text-muted-light dark:text-muted-dark">
+                Permanently delete your profile and all associated data.
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <div className="mt-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+          <div>
+            <p className="text-sm font-semibold">Delete Account</p>
+            <p className="text-xs text-muted-light dark:text-muted-dark">
+              Once deleted, your account and history cannot be recovered.
+            </p>
+          </div>
+          <button
+            onClick={() => setShowDeleteModal(true)}
+            className="px-4 py-2.5 rounded-xl bg-red-500 hover:bg-red-600 text-white text-xs font-semibold flex items-center gap-2 transition-colors"
+          >
+            <Trash2 size={15} /> Delete Account
+          </button>
+        </div>
+      </motion.div>
+
+      {/* --- Delete Account Confirmation Modal --- */}
+      {showDeleteModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+          <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="card p-6 max-w-md w-full border-red-500/30">
+            <h3 className="text-xl font-bold text-red-500 flex items-center gap-2 mb-2">
+              <ShieldAlert size={22} /> Confirm Account Deletion
+            </h3>
+            <p className="text-xs text-muted-light dark:text-muted-dark mb-4 leading-relaxed">
+              Are you sure? This action is permanent and will delete all your skills, chats, and records.
+            </p>
+
+            <div className="mb-4">
+              <label className="block text-xs font-semibold mb-1">Enter your password to confirm:</label>
+              <input
+                type="password"
+                value={deletePassword}
+                onChange={(e) => setDeletePassword(e.target.value)}
+                placeholder="Enter password"
+                className="input-field w-full"
+              />
+            </div>
+
+            <div className="flex justify-end gap-3">
+              <button
+                onClick={() => {
+                  setShowDeleteModal(false);
+                  setDeletePassword("");
+                }}
+                className="px-4 py-2 text-xs font-semibold rounded-xl hover:bg-black/5 dark:hover:bg-white/5"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleDeleteAccount}
+                disabled={deleting}
+                className="px-4 py-2 text-xs font-semibold rounded-xl bg-red-500 hover:bg-red-600 text-white"
+              >
+                {deleting ? "Deleting..." : "Yes, Delete My Account"}
+              </button>
+            </div>
+          </motion.div>
+        </div>
+      )}
+
+      {/* Reviews Received Section */}
       {reviews.length > 0 && (
         <div className="mt-8">
           <h2 className="mb-4 font-display text-lg font-semibold">Reviews Received</h2>
@@ -157,6 +349,7 @@ const Profile = () => {
           </div>
         </div>
       )}
+
     </div>
   );
 };
