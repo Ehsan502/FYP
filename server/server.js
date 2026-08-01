@@ -2,7 +2,6 @@ import express from "express";
 import dotenv from "dotenv";
 import cors from "cors";
 import morgan from "morgan";
-import cron from "node-cron";
 import dns from "dns";
 
 import connectDB from "./config/db.js";
@@ -25,9 +24,6 @@ import recommendationRoutes from "./routes/recommendationRoutes.js";
 import leaderboardRoutes from "./routes/leaderboardRoutes.js";
 import aiRoutes from "./routes/aiRoutes.js";
 
-import Session from "./models/Session.js";
-import { createNotification } from "./utils/notify.js";
-
 dotenv.config();
 
 // DNS Override
@@ -39,7 +35,36 @@ try {
 
 const app = express();
 
-// Middleware to ensure DB is connected before handling any request
+// 1. CORS Configuration (Properly Handling Preflight Requests)
+const allowedOrigins = [
+  "https://fypapp.netlify.app",
+  "http://localhost:5173",
+  "http://localhost:3000",
+];
+
+if (process.env.CLIENT_URL) {
+  const cleanEnvUrl = process.env.CLIENT_URL.replace(/\[.*\]\(|\)/g, "").trim();
+  if (cleanEnvUrl && !allowedOrigins.includes(cleanEnvUrl)) {
+    allowedOrigins.push(cleanEnvUrl);
+  }
+}
+
+const corsOptions = {
+  origin: function (origin, callback) {
+    if (!origin || allowedOrigins.some((allowed) => origin.startsWith(allowed))) {
+      return callback(null, true);
+    }
+    return callback(null, true); // Fallback to allow requests
+  },
+  credentials: true,
+  methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
+  allowedHeaders: ["Content-Type", "Authorization", "X-Requested-With"],
+};
+
+app.use(cors(corsOptions));
+app.options("*", cors(corsOptions)); // Enable preflight for ALL routes
+
+// 2. Middleware to ensure DB is connected
 app.use(async (req, res, next) => {
   try {
     await connectDB();
@@ -49,38 +74,6 @@ app.use(async (req, res, next) => {
     res.status(500).json({ error: "Database connection failed" });
   }
 });
-
-// Clean and parse allowed origins
-const allowedOrigins = [
-  "https://fypapp.netlify.app",
-  "http://localhost:5173",
-  "http://localhost:3000",
-];
-
-if (process.env.CLIENT_URL) {
-  // Extract pure URL if markdown links or extra characters were pasted
-  const cleanEnvUrl = process.env.CLIENT_URL.replace(/\[.*\]\(|\)/g, "").trim();
-  if (cleanEnvUrl && !allowedOrigins.includes(cleanEnvUrl)) {
-    allowedOrigins.push(cleanEnvUrl);
-  }
-}
-
-app.use(
-  cors({
-    origin: function (origin, callback) {
-      // Allow requests with no origin (like Postman, Mobile apps, or Server-to-Server)
-      if (!origin) return callback(null, true);
-
-      if (allowedOrigins.some((allowed) => origin.startsWith(allowed))) {
-        return callback(null, true);
-      }
-
-      // Fallback: allow to avoid breaking requests
-      return callback(null, true);
-    },
-    credentials: true,
-  })
-);
 
 app.use(express.json());
 app.use(morgan("dev"));
