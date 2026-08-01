@@ -35,7 +35,7 @@ export const registerUser = async (req, res, next) => {
 
 export const loginUser = async (req, res, next) => {
   try {
-    const { email, password } = req.body;
+    const { email, password, captchaAnswer, expectedAnswer } = req.body;
 
     if (!email || !password) {
       return res.status(400).json({ message: "Please provide email and password" });
@@ -43,17 +43,37 @@ export const loginUser = async (req, res, next) => {
 
     const user = await User.findOne({ email });
 
-    if (user && (await user.matchPassword(password))) {
-      if (user.isBlocked) {
-        return res.status(403).json({ message: "Your account has been blocked. Contact support." });
-      }
-      res.json({
-        user: { ...user.toSafeObject(), level: getLevelForPoints(user.points) },
-        token: generateToken(user._id),
-      });
-    } else {
-      res.status(401).json({ message: "Invalid email or password" });
+    if (!user || !(await user.matchPassword(password))) {
+      return res.status(401).json({ message: "Invalid email or password" });
     }
+
+    if (user.isBlocked) {
+      return res.status(403).json({ message: "Your account has been blocked. Contact support." });
+    }
+
+    // Step 1: Challenge return karein agar captcha answer nahi mila
+    if (captchaAnswer === undefined || captchaAnswer === null || captchaAnswer === "") {
+      const num1 = Math.floor(Math.random() * 9) + 1;
+      const num2 = Math.floor(Math.random() * 9) + 1;
+
+      return res.status(200).json({
+        requires2FA: true,
+        question: `What is ${num1} + ${num2}?`,
+        expectedAnswer: num1 + num2,
+        message: "Complete the security challenge to login",
+      });
+    }
+
+    // Step 2: Answer Verification
+    if (parseInt(captchaAnswer, 10) !== parseInt(expectedAnswer, 10)) {
+      return res.status(400).json({ message: "Incorrect 2FA Security Challenge answer!" });
+    }
+
+    // Step 3: Success Login
+    res.json({
+      user: { ...user.toSafeObject(), level: getLevelForPoints(user.points) },
+      token: generateToken(user._id),
+    });
   } catch (error) {
     next(error);
   }
@@ -68,9 +88,6 @@ export const getMe = async (req, res, next) => {
   }
 };
 
-// @desc    Forgot Password - Generate Token
-// @route   POST /api/auth/forgot-password
-// @access  Public
 export const forgotPassword = async (req, res, next) => {
   const { email } = req.body;
 
@@ -80,22 +97,19 @@ export const forgotPassword = async (req, res, next) => {
       return res.status(404).json({ message: "User not found with this email" });
     }
 
-    // Generate token
     const resetToken = crypto.randomBytes(20).toString("hex");
 
-    // Hash and set to resetPasswordToken field
     user.resetPasswordToken = crypto
       .createHash("sha256")
       .update(resetToken)
       .digest("hex");
 
-    // Set expire time (10 mins)
     user.resetPasswordExpire = Date.now() + 10 * 60 * 1000;
 
     await user.save();
 
-    // Frontend URL jahan token bheja jayega
-    const resetUrl = `http://localhost:5173/reset-password/${resetToken}`;
+    const clientUrl = process.env.CLIENT_URL || "https://fypapp.netlify.app";
+    const resetUrl = `${clientUrl}/reset-password/${resetToken}`;
 
     res.status(200).json({
       success: true,
@@ -107,12 +121,8 @@ export const forgotPassword = async (req, res, next) => {
   }
 };
 
-// @desc    Reset Password
-// @route   PUT /api/auth/reset-password/:resetToken
-// @access  Public
 export const resetPassword = async (req, res, next) => {
   try {
-    // Get hashed token
     const resetPasswordToken = crypto
       .createHash("sha256")
       .update(req.params.resetToken)
@@ -127,7 +137,6 @@ export const resetPassword = async (req, res, next) => {
       return res.status(400).json({ message: "Invalid or expired reset token" });
     }
 
-    // Set new password
     user.password = req.body.password;
     user.resetPasswordToken = undefined;
     user.resetPasswordExpire = undefined;
