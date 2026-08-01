@@ -22,11 +22,14 @@ export const AuthProvider = ({ children }) => {
       .finally(() => setLoading(false));
   }, []);
 
-  const login = async (email, password) => {
-    const res = await api.post("/auth/login", { email, password });
-    localStorage.setItem("skillswap_token", res.data.token);
-    setUser(res.data.user);
-    return res.data.user;
+  // Updated Login Function to accept response payload object
+  const login = (authData) => {
+    if (authData?.token) {
+      localStorage.setItem("skillswap_token", authData.token);
+    }
+    if (authData?.user) {
+      setUser(authData.user);
+    }
   };
 
   const register = async (payload) => {

@@ -36,7 +36,7 @@ const Login = () => {
         setExpectedAnswer(data.expectedAnswer);
         setShow2FAModal(true);
       } else {
-        if (login) login(data);
+        login(data);
         toast.success("Welcome back!");
         navigate("/dashboard");
       }
@@ -59,7 +59,7 @@ const Login = () => {
         expectedAnswer,
       });
 
-      if (login) login(data);
+      login(data);
       toast.success("2FA Verified! Welcome back.");
       setShow2FAModal(false);
       navigate("/dashboard");
