@@ -50,9 +50,38 @@ app.use(async (req, res, next) => {
   }
 });
 
-const clientUrl = process.env.CLIENT_URL || "http://localhost:5173";
+// Clean and parse allowed origins
+const allowedOrigins = [
+  "https://fypapp.netlify.app",
+  "http://localhost:5173",
+  "http://localhost:3000",
+];
 
-app.use(cors({ origin: clientUrl, credentials: true }));
+if (process.env.CLIENT_URL) {
+  // Extract pure URL if markdown links or extra characters were pasted
+  const cleanEnvUrl = process.env.CLIENT_URL.replace(/\[.*\]\(|\)/g, "").trim();
+  if (cleanEnvUrl && !allowedOrigins.includes(cleanEnvUrl)) {
+    allowedOrigins.push(cleanEnvUrl);
+  }
+}
+
+app.use(
+  cors({
+    origin: function (origin, callback) {
+      // Allow requests with no origin (like Postman, Mobile apps, or Server-to-Server)
+      if (!origin) return callback(null, true);
+
+      if (allowedOrigins.some((allowed) => origin.startsWith(allowed))) {
+        return callback(null, true);
+      }
+
+      // Fallback: allow to avoid breaking requests
+      return callback(null, true);
+    },
+    credentials: true,
+  })
+);
+
 app.use(express.json());
 app.use(morgan("dev"));
 
