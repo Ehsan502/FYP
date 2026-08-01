@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
 import { 
   Save, Star, Repeat2, Zap, Github, Linkedin, 
-  Link as LinkIcon, KeyRound, ShieldAlert, Trash2 
+  Link as LinkIcon, KeyRound, ShieldAlert, Trash2, Smartphone, ShieldCheck 
 } from "lucide-react";
 import toast from "react-hot-toast";
 import { useNavigate } from "react-router-dom";
@@ -41,6 +41,10 @@ const Profile = () => {
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [changingPassword, setChangingPassword] = useState(false);
+
+  // 2FA States
+  const [twoFactorEnabled, setTwoFactorEnabled] = useState(user?.twoFactorEnabled || false);
+  const [toggling2FA, setToggling2FA] = useState(false);
 
   // Delete Account States
   const [showDeleteModal, setShowDeleteModal] = useState(false);
@@ -110,7 +114,23 @@ const Profile = () => {
     }
   };
 
-  // 3. Delete Account
+  // 3. Toggle 2FA
+  const handleToggle2FA = async () => {
+    setToggling2FA(true);
+    try {
+      const nextStatus = !twoFactorEnabled;
+      const res = await api.put("/users/toggle-2fa", { enabled: nextStatus });
+      setTwoFactorEnabled(nextStatus);
+      if (updateUser) updateUser(res.data);
+      toast.success(nextStatus ? "2-Factor Authentication Enabled!" : "2-Factor Authentication Disabled!");
+    } catch (err) {
+      toast.error(err.response?.data?.message || "Failed to update 2FA setting");
+    } finally {
+      setToggling2FA(false);
+    }
+  };
+
+  // 4. Delete Account
   const handleDeleteAccount = async () => {
     if (!deletePassword) {
       return toast.error("Please enter your password to confirm deletion");
@@ -217,7 +237,7 @@ const Profile = () => {
       </motion.div>
 
       {/* --- Change Password Section --- */}
-      <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }} className="card p-6 sm:p-8">
+      <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.05 }} className="card p-6 sm:p-8">
         <div className="flex items-center gap-2.5 mb-6 pb-4 border-b border-black/5 dark:border-white/5">
           <KeyRound className="text-primary" size={20} />
           <h2 className="text-lg font-bold">Change Password</h2>
@@ -258,8 +278,49 @@ const Profile = () => {
         </form>
       </motion.div>
 
+      {/* --- 2-Factor Authentication (2FA) Section --- */}
+      <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }} className="card p-6 sm:p-8">
+        <div className="flex items-center justify-between pb-4 border-b border-black/5 dark:border-white/5">
+          <div className="flex items-center gap-2.5">
+            <Smartphone className="text-primary" size={20} />
+            <div>
+              <h2 className="text-lg font-bold">Two-Factor Authentication (2FA)</h2>
+              <p className="text-xs text-muted-light dark:text-muted-dark">
+                Add an extra layer of security to your account during sign in.
+              </p>
+            </div>
+          </div>
+          {twoFactorEnabled && (
+            <span className="flex items-center gap-1 text-xs text-emerald-500 font-semibold bg-emerald-500/10 px-2.5 py-1 rounded-full">
+              <ShieldCheck size={14} /> Active
+            </span>
+          )}
+        </div>
+
+        <div className="mt-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+          <p className="text-xs text-muted-light dark:text-muted-dark leading-relaxed max-w-md">
+            {twoFactorEnabled 
+              ? "2FA active hai. Har naye login attempt par confirmation code require hoga." 
+              : "2-Factor Authentication turn on karein taake login security mazeed strong ho sake."}
+          </p>
+          <button
+            onClick={handleToggle2FA}
+            disabled={toggling2FA}
+            className={`px-4 py-2.5 rounded-xl text-xs font-semibold flex items-center gap-2 transition-colors ${
+              twoFactorEnabled 
+                ? "bg-black/10 dark:bg-white/10 hover:bg-black/20 dark:hover:bg-white/20 text-ink-light dark:text-ink-dark" 
+                : "btn-primary"
+            }`}
+          >
+            {toggling2FA 
+              ? "Updating..." 
+              : twoFactorEnabled ? "Disable 2FA" : "Enable 2FA"}
+          </button>
+        </div>
+      </motion.div>
+
       {/* --- Danger Zone / Delete Account Section --- */}
-      <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }} className="card p-6 sm:p-8 border-red-500/20 bg-red-500/5">
+      <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.15 }} className="card p-6 sm:p-8 border-red-500/20 bg-red-500/5">
         <div className="flex items-center justify-between pb-4 border-b border-red-500/10">
           <div className="flex items-center gap-2.5">
             <ShieldAlert className="text-red-500" size={20} />
